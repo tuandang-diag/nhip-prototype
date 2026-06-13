@@ -6,6 +6,7 @@ set search_path = ''
 as $$
 declare
   item jsonb;
+  inserted_member public.members%rowtype;
 begin
   if not public.is_group_organizer(target_group_id) then
     raise exception 'not_authorized';
@@ -22,8 +23,8 @@ begin
     )
     on conflict (group_id, student_id) do update
       set name = excluded.name, team = excluded.team, email = excluded.email, updated_at = now()
-    returning * into item;
-    return next item;
+    returning * into inserted_member;
+    return next inserted_member;
   end loop;
 end;
 $$;

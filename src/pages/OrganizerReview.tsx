@@ -8,26 +8,26 @@ import {
   Sparkles
 } from "lucide-react";
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { AppShell } from "../components/AppShell";
-import { useDemoState } from "../state/DemoState";
+import { useProductState } from "../state/ProductState";
 import type { AnnouncementDraft } from "../types";
 
 export function OrganizerReview() {
-  const { state, updateDraft, publish } = useDemoState();
-  const [draft, setDraft] = useState<AnnouncementDraft>(state.announcement.draft);
+  const { state, publish, status, error } = useProductState();
+  const [draft, setDraft] = useState<AnnouncementDraft>(state!.announcement.draft);
   const navigate = useNavigate();
-  const roomMatchesSource = draft.room === "B.305";
+  const { groupId = "", announcementId = "" } = useParams();
+  const isValid = Boolean(draft.title.trim() && draft.summary.trim() && draft.deadline);
 
   const setField = <K extends keyof AnnouncementDraft>(
     key: K,
     value: AnnouncementDraft[K]
   ) => setDraft((current) => ({ ...current, [key]: value }));
 
-  const handlePublish = () => {
-    updateDraft(draft);
-    publish();
-    navigate("/organizer/published");
+  const handlePublish = async () => {
+    await publish(draft);
+    navigate(`/organizer/groups/${groupId}/announcements/${announcementId}/published`);
   };
 
   return (
@@ -42,16 +42,18 @@ export function OrganizerReview() {
             <h1>Kiểm tra trước khi xuất bản</h1>
             <p>So sánh bản gốc và chỉnh những gì AI hiểu chưa đúng.</p>
           </div>
-          <div className="trust-chip"><Sparkles size={16} /> AI đề xuất · Lan quyết định</div>
+          <div className="trust-chip"><Sparkles size={16} /> AI đề xuất · Bạn quyết định</div>
         </div>
 
         <div className="review-grid">
           <section className="panel source-panel">
             <div className="panel-title"><FileText size={18} /><strong>Nội dung gốc</strong></div>
-            <p className="source-copy">{state.announcement.sourceText}</p>
-            <div className="source-highlight">
-              “Thuyết trình sáng thứ Bảy tại phòng <mark>B.305</mark>.”
-            </div>
+            <p className="source-copy">{state!.announcement.sourceText}</p>
+            {state!.announcement.aiEvidence?.slice(0, 3).map((item) => (
+              <div className="source-highlight" key={`${item.field}-${item.quote}`}>
+                <strong>{item.field}:</strong> “<mark>{item.quote}</mark>”
+              </div>
+            ))}
           </section>
 
           <section className="panel form-panel">
@@ -80,15 +82,12 @@ export function OrganizerReview() {
               <label>
                 <span className="field-label"><MapPin size={15} /> Phòng thuyết trình</span>
                 <input
-                  className={roomMatchesSource ? "valid-input" : "warning-input"}
                   value={draft.room}
                   onChange={(event) => setField("room", event.target.value)}
                 />
-                {!roomMatchesSource ? (
-                  <small className="field-warning"><AlertTriangle size={13} /> Bản gốc ghi B.305</small>
-                ) : (
-                  <small className="field-valid"><CheckCircle2 size={13} /> Đã khớp bản gốc</small>
-                )}
+                {state!.announcement.aiWarnings?.length ? (
+                  <small className="field-warning"><AlertTriangle size={13} /> Kiểm tra lại với bản gốc</small>
+                ) : <small className="field-valid"><CheckCircle2 size={13} /> AI không phát hiện mâu thuẫn</small>}
               </label>
             </div>
 
@@ -96,14 +95,18 @@ export function OrganizerReview() {
               <CheckCircle2 size={18} />
               <div><strong>Bạn đang kiểm soát nội dung</strong><p>Thẻ chỉ được công khai sau khi bạn bấm xuất bản.</p></div>
             </div>
+            {state!.announcement.aiWarnings?.map((warning) => (
+              <div className="error-banner" key={warning}>{warning}</div>
+            ))}
+            {error && <div className="error-banner">{error}</div>}
             <button
               className="button primary full"
               type="button"
               onClick={handlePublish}
-              disabled={!roomMatchesSource || !draft.title.trim()}
+              disabled={!isValid || status === "loading"}
             >
               <CheckCircle2 size={18} />
-              Duyệt và xuất bản
+              {status === "loading" ? "Đang xuất bản…" : "Duyệt và xuất bản"}
             </button>
           </section>
         </div>

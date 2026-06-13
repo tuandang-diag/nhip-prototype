@@ -1,9 +1,10 @@
 import { corsHeaders, json } from "../_shared/cors.ts";
 import { hashToken } from "../_shared/crypto.ts";
+import { normalizeGroundedAnswer, unsupportedAnswer } from "../_shared/grounding.ts";
 import { enforceRateLimit } from "../_shared/rate-limit.ts";
 import { adminClient } from "../_shared/supabase.ts";
 
-const fallback = "Hỏi người tổ chức";
+const fallback = unsupportedAnswer.answer;
 
 Deno.serve(async (request) => {
   if (request.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -81,12 +82,7 @@ Deno.serve(async (request) => {
     const payload = await response.json();
     const outputText = payload.output?.flatMap((item: { content?: Array<{ type: string; text?: string }> }) => item.content ?? [])
       .find((content: { type: string; text?: string }) => content.type === "output_text")?.text;
-    const result = outputText ? JSON.parse(outputText) : { supported: false, answer: fallback, evidence: "" };
-    if (!result.supported || !result.evidence) {
-      result.supported = false;
-      result.answer = fallback;
-      result.evidence = "";
-    }
+    const result = normalizeGroundedAnswer(outputText ? JSON.parse(outputText) : null);
     await admin.from("api_usage_log").insert({
       group_id: announcement.group_id,
       announcement_id: announcement.id,
@@ -100,6 +96,6 @@ Deno.serve(async (request) => {
     return json(result);
   } catch (error) {
     console.error(error);
-    return json({ supported: false, answer: fallback, evidence: "", error: "answer_failed" }, 200);
+    return json({ ...unsupportedAnswer, error: "answer_failed" }, 200);
   }
 });

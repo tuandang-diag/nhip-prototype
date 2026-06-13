@@ -31,12 +31,13 @@ interface ProductValue {
   error: string;
   invites: InviteLink[];
   selectGroup: (groupId: string) => Promise<void>;
+  openAnnouncement: (groupId: string, announcementId: string) => Promise<void>;
   createGroup: (name: string, code: string) => Promise<string>;
   importRoster: (groupId: string, rows: RosterRow[]) => Promise<void>;
   generateInvites: (memberIds: string[]) => Promise<void>;
   generateDraft: (sourceText: string) => Promise<Announcement>;
   updateDraft: (patch: Partial<AnnouncementDraft>) => Promise<void>;
-  publish: () => Promise<void>;
+  publish: (draft?: AnnouncementDraft) => Promise<void>;
   updateMember: (
     memberId: string,
     patch: { status: MemberStatus; submissionUrl?: string; blocker?: string }
@@ -108,7 +109,8 @@ export function ProductStateProvider({ children }: PropsWithChildren) {
 
   useEffect(() => {
     if (isDemoMode || !supabase || !selectedGroupId || !state?.announcement.id) return;
-    const channel = supabase
+    const client = supabase;
+    const channel = client
       .channel(`actions:${state.announcement.id}`)
       .on(
         "postgres_changes",
@@ -122,7 +124,7 @@ export function ProductStateProvider({ children }: PropsWithChildren) {
       )
       .subscribe();
     return () => {
-      supabase.removeChannel(channel);
+      client.removeChannel(channel);
     };
   }, [selectedGroupId, state?.announcement.id, refresh]);
 
@@ -141,7 +143,31 @@ export function ProductStateProvider({ children }: PropsWithChildren) {
       selectGroup: async (groupId) => {
         setSelectedGroupId(groupId);
         window.localStorage.setItem(selectedKey, groupId);
-        if (!isDemoMode) await run(async () => setState(await organizerApi.loadGroupState(groupId)));
+        if (!isDemoMode) {
+          await run(async () => {
+            try {
+              setState(await organizerApi.loadGroupState(groupId));
+            } catch (loadError) {
+              if (
+                loadError instanceof Error &&
+                loadError.message === "Chưa có thông báo."
+              ) {
+                setState(null);
+                return;
+              }
+              throw loadError;
+            }
+          });
+        }
+      },
+      openAnnouncement: async (groupId, announcementId) => {
+        setSelectedGroupId(groupId);
+        window.localStorage.setItem(selectedKey, groupId);
+        if (!isDemoMode) {
+          await run(async () =>
+            setState(await organizerApi.loadGroupState(groupId, announcementId))
+          );
+        }
       },
       createGroup: async (name, code) => {
         if (!session) throw new Error("Bạn cần đăng nhập.");
@@ -204,13 +230,16 @@ export function ProductStateProvider({ children }: PropsWithChildren) {
           setState({ ...state, announcement });
         });
       },
-      publish: async () => {
+      publish: async (reviewedDraft) => {
         if (!state) return;
+        const nextDraft = reviewedDraft ?? state.announcement.draft;
         if (isDemoMode) {
           setState({
             ...state,
             announcement: {
               ...state.announcement,
+              draft: nextDraft,
+              reviewComplete: true,
               status: "published",
               publishedAt: new Date().toISOString()
             }
@@ -220,7 +249,7 @@ export function ProductStateProvider({ children }: PropsWithChildren) {
         await run(async () => {
           const announcement = await organizerApi.updateAnnouncement(
             state.announcement.id,
-            state.announcement.draft,
+            nextDraft,
             true
           );
           setState(await organizerApi.loadGroupState(state.group.id, announcement.id));

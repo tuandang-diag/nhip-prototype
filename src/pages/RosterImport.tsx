@@ -63,7 +63,7 @@ export function RosterImport() {
   };
 
   const inviteCsv = invites
-    .map((invite) => `"${invite.name}","${invite.studentId}","${window.location.origin}/member/ANNOUNCEMENT_ID?token=${invite.token}"`)
+    .map((invite) => `"${invite.name}","${invite.studentId}","${invite.token}"`)
     .join("\n");
 
   return (
@@ -106,7 +106,7 @@ export function RosterImport() {
         <div className="roster-actions">
           {invites.length > 0 ? (
             <>
-              <button className="button secondary" onClick={() => downloadText(`name,student_id,invite_link\n${inviteCsv}`, "nhip-invite-links.csv")}><Link2 size={17} /> Tải liên kết mời</button>
+              <button className="button secondary" onClick={() => downloadText(`name,student_id,invite_token\n${inviteCsv}`, "nhip-invite-tokens.csv")}><Link2 size={17} /> Tải mã mời dự phòng</button>
               <button className="button primary" onClick={() => navigate(`/organizer/groups/${groupId}/announcements/new`)}>Soạn thông báo đầu tiên <ArrowRight size={17} /></button>
             </>
           ) : (

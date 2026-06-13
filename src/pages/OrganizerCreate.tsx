@@ -1,14 +1,22 @@
 import { ArrowRight, Check, FileText, Sparkles } from "lucide-react";
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { AppShell } from "../components/AppShell";
-import { useDemoState } from "../state/DemoState";
+import { useProductState } from "../state/ProductState";
 
 export function OrganizerCreate() {
-  const { state } = useDemoState();
-  const [source, setSource] = useState(state.announcement.sourceText);
-  const [generated, setGenerated] = useState(false);
+  const { state, generateDraft, status, error } = useProductState();
+  const [source, setSource] = useState("");
+  const [generated, setGenerated] = useState<Awaited<
+    ReturnType<typeof generateDraft>
+  > | null>(null);
   const navigate = useNavigate();
+  const { groupId = "" } = useParams();
+
+  const handleGenerate = async () => {
+    const announcement = await generateDraft(source);
+    setGenerated(announcement);
+  };
 
   return (
     <AppShell>
@@ -41,11 +49,12 @@ export function OrganizerCreate() {
               className="button primary full"
               type="button"
               disabled={!source.trim()}
-              onClick={() => setGenerated(true)}
+              onClick={handleGenerate}
             >
               <Sparkles size={18} />
-              Tạo bản nháp bằng AI
+              {status === "loading" ? "AI đang phân tích…" : "Tạo bản nháp bằng AI"}
             </button>
+            {error && <div className="error-banner">{error}</div>}
           </section>
 
           <aside className={`panel ai-preview ${generated ? "generated" : ""}`}>
@@ -62,15 +71,19 @@ export function OrganizerCreate() {
                   <div><strong>Đã tìm thấy 6 trường</strong><small>Cần bạn kiểm tra 1 chi tiết</small></div>
                 </div>
                 <div className="preview-list">
-                  <div><span>Tiêu đề</span><strong>{state.announcement.draft.title}</strong></div>
-                  <div><span>Hạn chót</span><strong>23:59 · 19/06/2026</strong></div>
-                  <div className="warning-row"><span>Phòng học</span><strong>B.503 · Có thể sai</strong></div>
-                  <div><span>Hình thức</span><strong>Gửi liên kết nhóm</strong></div>
+                  <div><span>Tiêu đề</span><strong>{generated.draft.title}</strong></div>
+                  <div><span>Hạn chót</span><strong>{generated.draft.deadline || "Cần bổ sung"}</strong></div>
+                  <div className={generated.aiWarnings?.length ? "warning-row" : ""}><span>Phòng học</span><strong>{generated.draft.room || "Cần bổ sung"}</strong></div>
+                  <div><span>Hình thức</span><strong>{generated.draft.actionLabel}</strong></div>
                 </div>
                 <button
                   className="button primary full"
                   type="button"
-                  onClick={() => navigate("/organizer/review")}
+                  onClick={() =>
+                    navigate(
+                      `/organizer/groups/${groupId}/announcements/${generated.id}/review`
+                    )
+                  }
                 >
                   Kiểm tra bản nháp
                   <ArrowRight size={18} />

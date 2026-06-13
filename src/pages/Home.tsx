@@ -11,7 +11,7 @@ export function Home() {
           <span className="brand-mark"><Sparkles size={22} /></span>
           <strong>Nhịp</strong>
         </div>
-        <Link className="button ghost" to="/organizer/create">Vào bản demo</Link>
+        <Link className="button ghost" to="/login">Đăng nhập</Link>
       </header>
 
       <section className="hero">
@@ -22,17 +22,15 @@ export function Home() {
           theo dõi riêng tư và nhắc đúng người.
         </p>
         <div className="hero-actions">
-          <Link className="button primary large" to="/organizer/create">
+          <Link className="button primary large" to="/login">
             Bắt đầu với vai trò tổ chức
             <ArrowRight size={19} />
           </Link>
-          <Link className="button secondary large" to="/member">
-            Xem như thành viên
-          </Link>
+          <a className="button secondary large" href="#how-it-works">Cách hoạt động</a>
         </div>
       </section>
 
-      <section className="feature-strip" aria-label="Lợi ích chính">
+      <section id="how-it-works" className="feature-strip" aria-label="Lợi ích chính">
         <article>
           <span><MessageSquareText size={22} /></span>
           <div><strong>Không thay thế Zalo</strong><p>Chia sẻ một liên kết, giữ nguyên nhóm chat.</p></div>

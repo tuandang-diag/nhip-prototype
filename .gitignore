@@ -3,3 +3,8 @@ dist
 coverage
 *.local
 *.tsbuildinfo
+.env
+.env.*
+!.env.example
+supabase/functions/.env.local
+.supabase

@@ -8,7 +8,15 @@
     "build": "tsc --noEmit -p tsconfig.app.json && vite build",
     "type-check": "tsc --noEmit -p tsconfig.app.json --pretty false",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:functions": "deno test supabase/functions/_shared",
+    "test:openai": "node scripts/openai-smoke.mjs",
+    "supabase:start": "supabase start",
+    "supabase:stop": "supabase stop",
+    "supabase:reset": "supabase db reset",
+    "supabase:test": "supabase test db",
+    "functions:serve": "supabase functions serve --env-file supabase/functions/.env.local",
+    "functions:deploy": "supabase functions deploy generate-announcement-draft && supabase functions deploy answer-member-question && supabase functions deploy member-access && supabase functions deploy manage-invites"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.108.1",
@@ -26,6 +34,7 @@
     "@types/react-dom": "^19.0.2",
     "@vitejs/plugin-react": "^6.0.2",
     "jsdom": "^29.1.1",
+    "supabase": "^2.106.0",
     "typescript": "~5.7.2",
     "vite": "^8.0.16",
     "vitest": "^4.1.8"

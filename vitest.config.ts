@@ -1,6 +1,11 @@
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
+  define: {
+    "import.meta.env.VITE_DEMO_MODE": JSON.stringify("true"),
+    "import.meta.env.VITE_SUPABASE_URL": JSON.stringify(""),
+    "import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY": JSON.stringify("")
+  },
   test: {
     environment: "jsdom",
     setupFiles: "./src/test/setup.ts",

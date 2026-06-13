@@ -6,7 +6,6 @@ import {
   LogOut,
   RotateCcw,
   Sparkles,
-  Users,
   UserRoundPlus
 } from "lucide-react";
 import type { PropsWithChildren } from "react";
@@ -16,8 +15,9 @@ import { useAuth } from "../state/AuthState";
 import { useProductState } from "../state/ProductState";
 
 export function AppShell({ children }: PropsWithChildren) {
-  const { state, reset, selectedGroupId } = useProductState();
+  const { state, reset, selectedGroupId, groups } = useProductState();
   const { session, signOut } = useAuth();
+  const currentGroup = groups.find((group) => group.id === selectedGroupId);
   const navItems = [
     {
       to: `/organizer/groups/${selectedGroupId}/announcements/new`,
@@ -53,8 +53,8 @@ export function AppShell({ children }: PropsWithChildren) {
 
         <div className="class-card">
           <span className="eyebrow">Không gian đang mở</span>
-          <strong>{state.group.name}</strong>
-          <span>{state.group.code} · {state.group.members.length} thành viên</span>
+          <strong>{state?.group.name ?? currentGroup?.name ?? "Nhóm mới"}</strong>
+          <span>{state?.group.code ?? currentGroup?.code} · {state?.group.members.length ?? "—"} thành viên</span>
         </div>
 
         <nav aria-label="Điều hướng chính">
@@ -98,7 +98,7 @@ export function AppShell({ children }: PropsWithChildren) {
               <BellRing size={19} />
             </button>
             {isDemoMode && (
-              <a className="button secondary compact" href={`/member/${state?.announcement.id}?token=demo`}>
+              <a className="button secondary compact" href={`/member/${state?.announcement.id ?? "demo"}?token=demo`}>
                 Mở thẻ thành viên <ExternalLink size={16} aria-hidden="true" />
               </a>
             )}

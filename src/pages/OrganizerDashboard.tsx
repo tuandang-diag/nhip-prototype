@@ -13,7 +13,7 @@ import { useMemo, useState } from "react";
 import { AppShell } from "../components/AppShell";
 import { ProgressBar } from "../components/ProgressBar";
 import { StatusBadge } from "../components/StatusBadge";
-import { useDemoState } from "../state/DemoState";
+import { useProductState } from "../state/ProductState";
 import type { MemberStatus } from "../types";
 import { canRemind, formatDateTime, statusLabels, toCsv } from "../utils";
 
@@ -22,7 +22,8 @@ type FilterValue = "all" | MemberStatus;
 const statusOrder: MemberStatus[] = ["unopened", "acknowledged", "completed", "blocked"];
 
 export function OrganizerDashboard() {
-  const { state, sendReminders } = useDemoState();
+  const { state: loadedState, sendReminders, status, error } = useProductState();
+  const state = loadedState!;
   const [filter, setFilter] = useState<FilterValue>("all");
   const [query, setQuery] = useState("");
   const [reminderOpen, setReminderOpen] = useState(false);
@@ -67,8 +68,8 @@ export function OrganizerDashboard() {
     URL.revokeObjectURL(url);
   };
 
-  const handleReminder = () => {
-    sendReminders(reminderTargets.map((member) => member.id));
+  const handleReminder = async () => {
+    await sendReminders(reminderTargets.map((member) => member.id));
     setReminderSent(true);
   };
 
@@ -233,9 +234,10 @@ export function OrganizerDashboard() {
               </button>
               <button className="button primary" type="button" onClick={handleReminder}>
                 {reminderSent ? <Check size={17} /> : <Clipboard size={17} />}
-                {reminderSent ? "Đã chuẩn bị tin nhắn" : "Chuẩn bị nhắc riêng"}
+                {reminderSent ? "Đã chuẩn bị tin nhắn" : status === "loading" ? "Đang chuẩn bị…" : "Chuẩn bị nhắc riêng"}
               </button>
             </div>
+            {error && <div className="error-banner">{error}</div>}
           </section>
         </div>
       )}

@@ -62,30 +62,38 @@ Deno.serve(async (request) => {
         .maybeSingle();
       if (!action) return json({ error: "action_not_found" }, 404);
       const now = new Date().toISOString();
-      if (action.status === "unopened") {
+      if (!action.opened_at) {
         await admin
           .from("member_actions")
-          .update({ status: "acknowledged", opened_at: now, acknowledged_at: now, updated_at: now })
+          .update({ opened_at: now, updated_at: now })
           .eq("announcement_id", announcement.id)
           .eq("member_id", member.id);
-        action.status = "acknowledged";
         action.opened_at = now;
-        action.acknowledged_at = now;
       }
       const { data: group } = await admin.from("groups").select("name,code").eq("id", member.group_id).single();
       const { data: organizer } = await admin
         .from("group_organizers")
-        .select("profiles(display_name)")
+        .select("user_id")
         .eq("group_id", member.group_id)
         .eq("role", "owner")
         .limit(1)
         .maybeSingle();
+      const { data: organizerProfile } = organizer
+        ? await admin.from("profiles").select("display_name").eq("id", organizer.user_id).maybeSingle()
+        : { data: null };
+      await admin.from("activity_log").insert({
+        group_id: member.group_id,
+        announcement_id: announcement.id,
+        actor_member_id: member.id,
+        event_type: "member_action_opened",
+        metadata: {}
+      });
       return json({
         member,
         action,
         announcement,
         group,
-        organizer_name: organizer?.profiles?.display_name ?? "Người tổ chức"
+        organizer_name: organizerProfile?.display_name ?? "Người tổ chức"
       });
     }
 
@@ -101,7 +109,16 @@ Deno.serve(async (request) => {
     }
 
     const now = new Date().toISOString();
-    if (operation === "submit") {
+    if (operation === "acknowledge") {
+      if (current.status === "unopened") {
+        await admin.from("member_actions").update({
+          status: "acknowledged",
+          opened_at: current.opened_at ?? now,
+          acknowledged_at: now,
+          updated_at: now
+        }).eq("announcement_id", announcement.id).eq("member_id", member.id);
+      }
+    } else if (operation === "submit") {
       const submissionUrl = String(body.submission_url ?? "");
       try {
         new URL(submissionUrl);
@@ -132,6 +149,18 @@ Deno.serve(async (request) => {
       return json({ error: "invalid_operation", fallback }, 400);
     }
 
+    await admin.from("activity_log").insert({
+      group_id: member.group_id,
+      announcement_id: announcement.id,
+      actor_member_id: member.id,
+      event_type:
+        operation === "submit"
+          ? "member_submission_updated"
+          : operation === "acknowledge"
+            ? "member_acknowledged"
+            : "member_blocker_updated",
+      metadata: {}
+    });
     return json({ ok: true });
   } catch (error) {
     console.error(error);

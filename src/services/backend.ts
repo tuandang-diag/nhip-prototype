@@ -20,15 +20,51 @@ type DbMember = {
   email: string | null;
 };
 
+const toVietnamLocalInput = (value: unknown): string => {
+  if (!value) return "";
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Ho_Chi_Minh",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23"
+  })
+    .formatToParts(new Date(String(value)))
+    .reduce<Record<string, string>>((result, part) => {
+      result[part.type] = part.value;
+      return result;
+    }, {});
+  return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`;
+};
+
+const toDatabaseDeadline = (value: string): string | null => {
+  if (!value) return null;
+  return new Date(`${value}:00+07:00`).toISOString();
+};
+
 const mapDraft = (row: Record<string, unknown>): AnnouncementDraft => ({
   title: String(row.title ?? ""),
   summary: String(row.summary ?? ""),
-  deadline: row.deadline ? String(row.deadline).slice(0, 16) : "",
+  deadline: toVietnamLocalInput(row.deadline),
   room: String(row.room ?? ""),
   actionLabel: String(row.action_label ?? ""),
   completionType: row.completion_type === "acknowledgement" ? "acknowledgement" : "submission",
-  attachments: (row.attachments as AnnouncementDraft["attachments"]) ?? [],
-  faq: (row.approved_faq as AnnouncementDraft["faq"]) ?? []
+  attachments: ((row.attachments as Array<Record<string, unknown>>) ?? []).map(
+    (attachment, index) => ({
+      id: String(attachment.id ?? `attachment-${index + 1}`),
+      name: String(attachment.name ?? ""),
+      type: attachment.type === "pdf" ? "pdf" : "link",
+      url: String(attachment.url ?? "")
+    })
+  ),
+  faq: ((row.approved_faq as Array<Record<string, unknown>>) ?? []).map((item, index) => ({
+    id: String(item.id ?? `faq-${index + 1}`),
+    question: String(item.question ?? ""),
+    answer: String(item.answer ?? ""),
+    evidence: String(item.evidence ?? "")
+  }))
 });
 
 const mapAnnouncement = (row: Record<string, unknown>): Announcement => ({
@@ -132,7 +168,10 @@ export const organizerApi = {
         source_text: sourceText,
         title: aiDraft.title,
         summary: aiDraft.summary,
-        deadline: aiDraft.deadline,
+        deadline:
+          typeof aiDraft.deadline === "string" && aiDraft.deadline
+            ? new Date(aiDraft.deadline).toISOString()
+            : null,
         room: aiDraft.room,
         action_label: aiDraft.action_label,
         completion_type: aiDraft.completion_type,
@@ -151,7 +190,7 @@ export const organizerApi = {
     const patch = {
       title: draft.title,
       summary: draft.summary,
-      deadline: draft.deadline || null,
+      deadline: toDatabaseDeadline(draft.deadline),
       room: draft.room,
       action_label: draft.actionLabel,
       completion_type: draft.completionType,
@@ -249,13 +288,15 @@ export const memberApi = {
   async update(
     token: string,
     announcementId: string,
-    operation: "submit" | "block",
-    value: string
+    operation: "acknowledge" | "submit" | "block",
+    value = ""
   ) {
     const body =
       operation === "submit"
         ? { token, announcement_id: announcementId, operation, submission_url: value }
-        : { token, announcement_id: announcementId, operation, blocker: value };
+        : operation === "block"
+          ? { token, announcement_id: announcementId, operation, blocker: value }
+          : { token, announcement_id: announcementId, operation };
     const { data, error } = await requireSupabase().functions.invoke("member-access", { body });
     if (error) throw error;
     return data;
