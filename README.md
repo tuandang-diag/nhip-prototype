@@ -125,6 +125,10 @@ npx supabase db push
 npx supabase migration list
 ```
 
+Group creation uses the authenticated `create_group` RPC. The RPC derives
+`created_by` from the organizer JWT; the browser must not send an arbitrary
+owner ID.
+
 Do not use `--include-seed` for production. The current seed file is intended
 for local development.
 

@@ -113,14 +113,11 @@ export const organizerApi = {
     if (error) throw error;
     return data ?? [];
   },
-  async createGroup(name: string, code: string, userId: string) {
+  async createGroup(name: string, code: string) {
     const { data, error } = await requireSupabase()
-      .from("groups")
-      .insert({ name, code, created_by: userId })
-      .select("id,name,code")
-      .single();
+      .rpc("create_group", { group_name: name, group_code: code });
     if (error) throw error;
-    return data;
+    return { id: data.id, name: data.name, code: data.code };
   },
   async importRoster(groupId: string, rows: RosterRow[]) {
     const roster = rows.filter((row) => !row.errors.length).map(({ errors: _, ...row }) => row);

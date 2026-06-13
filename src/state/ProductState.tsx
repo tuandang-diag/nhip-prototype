@@ -173,7 +173,7 @@ export function ProductStateProvider({ children }: PropsWithChildren) {
         if (!session) throw new Error("Bạn cần đăng nhập.");
         if (isDemoMode) return createSeedState().group.id;
         return run(async () => {
-          const group = await organizerApi.createGroup(name, code, session.userId);
+          const group = await organizerApi.createGroup(name, code);
           setGroups((current) => [...current, group]);
           setSelectedGroupId(group.id);
           window.localStorage.setItem(selectedKey, group.id);
