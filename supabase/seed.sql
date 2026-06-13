@@ -1,0 +1,2 @@
+-- Local seed is intentionally minimal because organizer-owned rows require an Auth user.
+-- Create an organizer through Studio or magic-link login, then use the application setup flow.
